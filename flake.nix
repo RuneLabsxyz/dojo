@@ -167,17 +167,47 @@
             cargoExtraArgs = "-p dojo-language-server";
             src = fileSetForCrate ./bin/dojo-language-server;
           });
-          katana_values = (individualCrateArgs
+
+          katana = craneLib.buildPackage individualCrateArgs
             // {
             pname = "katana";
             cargoExtraArgs = "-p katana";
             src = fileSetForCrate ./bin/katana;
-          });
-          katana = craneLib.buildPackage katana_values;
+          };
+
+          saya = craneLib.buildPackage individualCrateArgs
+            // {
+            pname = "saya";
+            cargoExtraArgs = "-p saya";
+            src = fileSetForCrate ./bin/saya;
+          };
+
+
+          scheduler = craneLib.buildPackage individualCrateArgs
+            // {
+            pname = "scheduler";
+            cargoExtraArgs = "-p scheduler";
+            src = fileSetForCrate ./bin/scheduler;
+          };
+
+          sozo = craneLib.buildPackage individualCrateArgs
+            // {
+            pname = "sozo";
+            cargoExtraArgs = "-p sozo";
+            src = fileSetForCrate ./bin/sozo;
+          };
+
+          torii = craneLib.buildPackage individualCrateArgs
+            // {
+            pname = "torii";
+            cargoExtraArgs = "-p torii";
+            src = fileSetForCrate ./bin/torii;
+          };
+
+
         in
         rec
         {
-          values = fileSetForCrate ./bin/katana;
           packages = {
             inherit dojo-language-server katana;
           };
