@@ -209,7 +209,7 @@
         rec
         {
           packages = {
-            inherit dojo-language-server katana;
+            inherit dojo-language-server katana saya scheduler sozo torii;
           };
 
           # Used by `nix develop`
