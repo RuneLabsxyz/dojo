@@ -16,6 +16,7 @@ use plugins::typescript_v2::TypeScriptV2Plugin;
 use plugins::unity::UnityPlugin;
 use plugins::BuiltinPlugin;
 pub use plugins::BuiltinPlugins;
+use crate::plugins::godot::GodotPlugin;
 
 #[derive(Debug, PartialEq)]
 pub struct DojoModel {
@@ -89,6 +90,7 @@ impl PluginManager {
                 BuiltinPlugins::Typescript => Box::new(TypescriptPlugin::new()),
                 BuiltinPlugins::Unity => Box::new(UnityPlugin::new()),
                 BuiltinPlugins::TypeScriptV2 => Box::new(TypeScriptV2Plugin::new()),
+                BuiltinPlugins::Godot => Box::new(GodotPlugin::new()),
             };
 
             let files = builder.generate_code(&data).await?;

@@ -34,6 +34,10 @@ pub struct BuildArgs {
     pub unity: bool,
 
     #[arg(long)]
+    #[arg(help = "Generate Godot bindings.")]
+    pub godot: bool,
+
+    #[arg(long)]
     #[arg(help = "Output directory.", default_value = "bindings")]
     pub bindings_output: String,
 
@@ -104,6 +108,10 @@ impl BuildArgs {
             builtin_plugins.push(BuiltinPlugins::Unity);
         }
 
+        if self.godot {
+            builtin_plugins.push(BuiltinPlugins::Godot);
+        }
+
         if self.stats {
             let target_dir = &compile_info.target_dir;
             let contracts_statistics = get_contract_statistics_for_dir(config.ui(), target_dir)
@@ -168,6 +176,7 @@ impl Default for BuildArgs {
             typescript: false,
             typescript_v2: false,
             unity: false,
+            godot: false,
             bindings_output: "bindings".to_string(),
             stats: false,
             packages: None,

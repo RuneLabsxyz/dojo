@@ -2,13 +2,10 @@
 resolver = "2"
 
 members = [
-	"bin/dojo-language-server",
-	"bin/katana",
-	"bin/saya",
-	"bin/scheduler",
-	"bin/sozo",
-	"bin/torii",
 	#	"crates/benches",
+	"bin/*",
+	#	"crates/benches",
+	"crates/common",
 	"crates/dojo-bindgen",
 	"crates/dojo-core",
 	"crates/dojo-lang",
@@ -61,8 +58,16 @@ inherits = "release"
 lto = "fat"
 
 [workspace.dependencies]
+<<<<<<< HEAD
 cainome = { git = "https://github.com/cartridge-gg/cainome", tag = "v0.3.2", features = [ "abigen-rs" ] }
 dojo-utils = { path = "crates/dojo-utils" }
+=======
+cainome = { git = "https://github.com/cartridge-gg/cainome", rev = "7b0c2b369063fc1a34152ec999028a7e9dd093a3", features = [ "abigen-rs" ] }
+cainome-parser = { git = "https://github.com/cartridge-gg/cainome", rev = "7b0c2b369063fc1a34152ec999028a7e9dd093a3" }
+cainome-rs = { git = "https://github.com/cartridge-gg/cainome", rev = "7b0c2b369063fc1a34152ec999028a7e9dd093a3" }
+
+common = { path = "crates/common" }
+>>>>>>> 087e3109 (Added intial support for nix-builds & godot)
 
 # metrics
 dojo-metrics = { path = "crates/metrics" }
@@ -171,6 +176,9 @@ num-traits = { version = "0.2", default-features = false }
 once_cell = "1.0"
 parking_lot = "0.12.1"
 pretty_assertions = "1.2.1"
+prettyplease = "0.2.20"
+proc-macro2 = "1.0.86"
+quote = "1.0.36"
 rand = "0.8.5"
 rayon = "1.8.0"
 regex = "1.10.3"
