@@ -37,11 +37,12 @@ impl GodotPlugin {
         }
     }
 
-    fn handle_model(&self, _name: &str, model: &DojoModel) -> TokenStream {
+    fn handle_model(&self, name: &str, model: &DojoModel) -> TokenStream {
         let imports = self.get_imports();
 
-        let contents =
-            cainome::rs::abi_to_tokenstream(&model.tag, &model.tokens, ExecutionVersion::V1);
+        let name = name.split('-').last().unwrap().to_lowercase();
+
+        let contents = cainome::rs::abi_to_tokenstream(&*name, &model.tokens, ExecutionVersion::V1);
 
         quote! {
             #imports
