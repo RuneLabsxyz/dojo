@@ -1,29 +1,14 @@
-use std::collections::HashMap;
-use std::path::{Path, PathBuf};
-use async_trait::async_trait;
-use cainome::parser::tokens::Composite;
-use cainome::rs::{CairoEnum, CairoStruct};
-use cainome_parser::tokens::{Function, Token};
-use cainome_rs::{CairoFunction, ExecutionVersion};
-use chrono::{DateTime, Utc};
-use proc_macro2::{Ident, Span, TokenStream};
-use crate::{DojoData, DojoModel};
 use crate::error::BindgenResult;
 use crate::plugins::BuiltinPlugin;
+use crate::{DojoData, DojoModel};
+use async_trait::async_trait;
+use cainome::rs::ExecutionVersion;
+use chrono::{DateTime, Utc};
+use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 use syn::{File, Type};
-use crate::plugins::godot::tmp::types::CairoToRust;
-
-pub(crate) mod tmp;
-
-fn str_to_ident(str_in: &str) -> Ident {
-    Ident::new(str_in, Span::call_site())
-}
-
-fn str_to_type(str_in: &str) -> Type {
-    syn::parse_str(str_in).unwrap_or_else(|_| panic!("Can't convert {} to syn::Type", str_in))
-}
-
 
 #[derive(Debug)]
 pub struct GodotPlugin {
@@ -32,9 +17,7 @@ pub struct GodotPlugin {
 
 impl GodotPlugin {
     pub fn new() -> Self {
-        Self {
-            generated_time: Utc::now()
-        }
+        Self { generated_time: Utc::now() }
     }
 
     fn get_header(&self) -> String {
@@ -54,70 +37,16 @@ impl GodotPlugin {
         }
     }
 
-    fn handle_struct(&self, composite: &Composite) -> TokenStream {
-        // TODO: Migreate to something else later
-        let declaration = CairoStruct::expand_decl(composite,
-                                                   &["Clone".to_string(), "Debug".to_string()]);
-
-        let implementation = CairoStruct::expand_impl(composite);
-
-        quote! {
-            #declaration
-
-            #implementation
-        }
-    }
-
-    fn handle_enum(&self, composite: &Composite) -> TokenStream {
-        // TODO: Migreate to something else later
-        let declaration = CairoEnum::expand_decl(composite,
-                                                 &["Clone".to_string(), "Debug".to_string()]);
-
-        let implementation = CairoEnum::expand_impl(composite);
-
-        quote! {
-            #declaration
-
-            #implementation
-        }
-    }
-
-    fn handle_function(&self, function: &Function) -> TokenStream {
-        CairoFunction::expand(function, true, ExecutionVersion::V1)
-    }
-
-    fn handle_interface(&self, _name: &str, _functions: Vec<Token>) -> TokenStream {
-        // TODO
-        quote!()
-    }
-
     fn handle_model(&self, _name: &str, model: &DojoModel) -> TokenStream {
         let imports = self.get_imports();
 
-        let struct_declarations: Vec<TokenStream> = model.tokens.structs.iter()
-            .map(|e| e.to_composite().expect("A struct is not a composite?"))
-            .map(|composite| self.handle_struct(composite))
-            .collect();
-
-        let enum_declarations: Vec<TokenStream> = model.tokens.enums.iter()
-            .map(|e| e.to_composite().expect("An enum is not a composite?"))
-            .map(|composite| self.handle_enum(composite))
-            .collect();
-
-        let function_declarations: Vec<TokenStream> = model.tokens.functions.iter()
-            .map(|e| e.to_function().expect("Function is not a function?"))
-            .map(|func| self.handle_function(func))
-            .collect();
-
+        let contents =
+            cainome::rs::abi_to_tokenstream(&model.tag, &model.tokens, ExecutionVersion::V1);
 
         quote! {
             #imports
 
-            #( #struct_declarations )*
-
-            #( #enum_declarations )*
-
-            #( #function_declarations )*
+            #contents
         }
     }
 
@@ -128,16 +57,14 @@ impl GodotPlugin {
         let value: File = syn::parse2(stream).unwrap();
         let parsed_contents = prettyplease::unparse(&value);
 
-        format!("{}{}", self.get_header(), parsed_contents)
-            .into_bytes()
+        format!("{}{}", self.get_header(), parsed_contents).into_bytes()
     }
 }
-
 
 #[async_trait]
 impl BuiltinPlugin for GodotPlugin {
     async fn generate_code(&self, data: &DojoData) -> BindgenResult<HashMap<PathBuf, Vec<u8>>> {
-        let mut imports = vec!();
+        let mut imports = vec![];
 
         let mut files: HashMap<PathBuf, Vec<u8>> = HashMap::new();
 

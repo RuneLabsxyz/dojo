@@ -36,7 +36,18 @@
           inherit (pkgs) lib;
 
           craneLib = crane.mkLib pkgs;
-          src = craneLib.cleanCargoSource ./.;
+          # include proto & compiled json 
+          protoFilter = path: _type: builtins.match ".*proto$" path != null;
+          jsonFilter = path: _type: builtins.match ".*json$" path != null;
+          sourceFilter = path: type:
+            (protoFilter path type) || (jsonFilter path type) || (craneLib.filterCargoSources path type);
+
+
+          src = lib.cleanSourceWith {
+            src = ./.;
+            filter = sourceFilter;
+            name = "source"; # Be reproducible, regardless of the directory name
+          };
 
           loadedChain = pkgs.rust-bin.stable."1.80.0".default.override {
             extensions = [ "rust-src" ];
@@ -161,12 +172,12 @@
           # This allows consumers to only depend on (and build) only what they need.
           # Though it is possible to build the entire workspace as a single derivation,
           # so this is left up to you on how to organize things
-          dojo-language-server = craneLib.buildPackage (individualCrateArgs
+          dojo-language-server = builtins.trace "${fileSetForCrate ./bin/dojo-language-server}" (craneLib.buildPackage (individualCrateArgs
             // {
             pname = "dojo-language-server";
             cargoExtraArgs = "-p dojo-language-server";
             src = fileSetForCrate ./bin/dojo-language-server;
-          });
+          }));
 
           katana = craneLib.buildPackage individualCrateArgs
             // {
@@ -230,7 +241,13 @@
             ];
 
             nativeBuildInputs = with pkgs; [
+              rustPlatform.bindgenHook
+              pkg-config
             ];
+
+            LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
+            CAIRO_ARCHIVE = "${cairo-zip}";
+            PROTOC = "${pkgs.protobuf}/bin/protoc";
           };
         }
       );

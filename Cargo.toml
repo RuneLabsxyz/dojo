@@ -58,16 +58,12 @@ inherits = "release"
 lto = "fat"
 
 [workspace.dependencies]
-<<<<<<< HEAD
-cainome = { git = "https://github.com/cartridge-gg/cainome", tag = "v0.3.2", features = [ "abigen-rs" ] }
 dojo-utils = { path = "crates/dojo-utils" }
-=======
 cainome = { git = "https://github.com/cartridge-gg/cainome", rev = "7b0c2b369063fc1a34152ec999028a7e9dd093a3", features = [ "abigen-rs" ] }
 cainome-parser = { git = "https://github.com/cartridge-gg/cainome", rev = "7b0c2b369063fc1a34152ec999028a7e9dd093a3" }
 cainome-rs = { git = "https://github.com/cartridge-gg/cainome", rev = "7b0c2b369063fc1a34152ec999028a7e9dd093a3" }
 
 common = { path = "crates/common" }
->>>>>>> 087e3109 (Added intial support for nix-builds & godot)
 
 # metrics
 dojo-metrics = { path = "crates/metrics" }
