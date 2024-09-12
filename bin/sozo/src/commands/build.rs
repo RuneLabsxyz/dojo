@@ -34,6 +34,10 @@ pub struct BuildArgs {
     pub unity: bool,
 
     #[arg(long)]
+    #[arg(help = "Generate Bevy bindings.")]
+    pub bevy: bool,
+
+    #[arg(long)]
     #[arg(help = "Generate Godot bindings.")]
     pub godot: bool,
 
@@ -108,6 +112,10 @@ impl BuildArgs {
             builtin_plugins.push(BuiltinPlugins::Unity);
         }
 
+        if self.bevy {
+            builtin_plugins.push(BuiltinPlugins::Bevy);
+        }
+
         if self.godot {
             builtin_plugins.push(BuiltinPlugins::Godot);
         }
@@ -176,6 +184,7 @@ impl Default for BuildArgs {
             typescript: false,
             typescript_v2: false,
             unity: false,
+            bevy: false,
             godot: false,
             bindings_output: "bindings".to_string(),
             stats: false,

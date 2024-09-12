@@ -11,6 +11,7 @@ pub mod error;
 use error::BindgenResult;
 
 mod plugins;
+use plugins::bevy::BevyPlugin;
 use plugins::typescript::TypescriptPlugin;
 use plugins::typescript_v2::TypeScriptV2Plugin;
 use plugins::unity::UnityPlugin;
@@ -90,6 +91,7 @@ impl PluginManager {
                 BuiltinPlugins::Typescript => Box::new(TypescriptPlugin::new()),
                 BuiltinPlugins::Unity => Box::new(UnityPlugin::new()),
                 BuiltinPlugins::TypeScriptV2 => Box::new(TypeScriptV2Plugin::new()),
+                BuiltinPlugins::Bevy => Box::new(BevyPlugin::new()),
                 BuiltinPlugins::Godot => Box::new(GodotPlugin::new()),
             };
 
