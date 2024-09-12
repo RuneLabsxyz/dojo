@@ -5,7 +5,6 @@ members = [
 	#	"crates/benches",
 	"bin/*",
 	#	"crates/benches",
-	"crates/common",
 	"crates/dojo-bindgen",
 	"crates/dojo-core",
 	"crates/dojo-lang",
@@ -59,9 +58,8 @@ lto = "fat"
 
 [workspace.dependencies]
 dojo-utils = { path = "crates/dojo-utils" }
-cainome = { git = "https://github.com/cartridge-gg/cainome", rev = "7b0c2b369063fc1a34152ec999028a7e9dd093a3", features = [ "abigen-rs" ] }
-cainome-parser = { git = "https://github.com/cartridge-gg/cainome", rev = "7b0c2b369063fc1a34152ec999028a7e9dd093a3" }
-cainome-rs = { git = "https://github.com/cartridge-gg/cainome", rev = "7b0c2b369063fc1a34152ec999028a7e9dd093a3" }
+
+cainome = { git = "https://github.com/cartridge-gg/cainome", tag = "v0.3.2", features = [ "abigen-rs" ] }
 
 common = { path = "crates/common" }
 

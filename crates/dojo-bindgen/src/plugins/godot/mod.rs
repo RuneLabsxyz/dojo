@@ -8,7 +8,7 @@ use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use syn::{File, Type};
+use syn::File;
 
 #[derive(Debug)]
 pub struct GodotPlugin {
