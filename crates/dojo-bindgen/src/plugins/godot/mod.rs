@@ -42,7 +42,7 @@ impl GodotPlugin {
 
         let name = name.split('-').last().unwrap().to_lowercase();
 
-        let contents = cainome::rs::abi_to_tokenstream(&*name, &model.tokens, ExecutionVersion::V1);
+        let contents = cainome::rs::abi_to_tokenstream(&*name, &model.tokens, ExecutionVersion::V1, &[]);
 
         quote! {
             #imports

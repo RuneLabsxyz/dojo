@@ -325,5 +325,6 @@ abigen!(
 ]"#,
 type_aliases {
 dojo::world::config::Config::Event as DojoConfigEvent;
-}
+},
+derives(Debug, PartialEq, PartialOrd, Clone, serde::Serialize, serde::Deserialize),
 );
