@@ -35,8 +35,8 @@ tempfile.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 rcgen = "0.13.1"
-libp2p = { git = "https://github.com/libp2p/rust-libp2p", features = [ "ed25519", "gossipsub", "identify", "macros", "noise", "ping", "quic", "relay", "tcp", "tokio", "yamux", "websocket", "dns" ], rev = "f0cbd4fb0cef8d1ae2298901eab95acb5f104ea3" }
-libp2p-webrtc = { git = "https://github.com/libp2p/rust-libp2p", features = [ "pem", "tokio" ], rev = "f0cbd4fb0cef8d1ae2298901eab95acb5f104ea3" }
+libp2p = { git = "https://github.com/libp2p/rust-libp2p", features = [ "dns", "ed25519", "gossipsub", "identify", "macros", "noise", "ping", "quic", "relay", "tcp", "tokio", "websocket", "yamux" ], rev = "3837e33cd4c40ae703138e6aed6f6c9d52928a80" }
+libp2p-webrtc = { git = "https://github.com/libp2p/rust-libp2p", features = [ "pem", "tokio" ], rev = "3837e33cd4c40ae703138e6aed6f6c9d52928a80" }
 sqlx.workspace = true
 tokio.workspace = true
 torii-core.workspace = true
