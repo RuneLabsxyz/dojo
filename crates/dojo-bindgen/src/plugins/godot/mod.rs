@@ -11,6 +11,7 @@ use std::hash::DefaultHasher;
 use std::path::{Path, PathBuf};
 use cainome::parser::tokens::Token;
 use syn::File;
+use crate::utils::torii_typegen::enums::{DefaultDojoEnumHandler, DojoEnumHandler};
 use crate::utils::torii_typegen::structs::{DefaultDojoStructHandler, DojoStructHandler};
 use crate::utils::torii_typegen::types::DefaultDojoTypeHandler;
 
@@ -18,13 +19,15 @@ use crate::utils::torii_typegen::types::DefaultDojoTypeHandler;
 pub struct GodotPlugin {
     generated_time: DateTime<Utc>,
     struct_handler: DefaultDojoStructHandler<DefaultDojoTypeHandler>,
+    enum_handler: DefaultDojoEnumHandler<DefaultDojoTypeHandler>,
 }
 
 impl GodotPlugin {
     pub fn new() -> Self {
         Self {
             generated_time: Utc::now(),
-            struct_handler: DefaultDojoStructHandler::new(DefaultDojoTypeHandler)
+            struct_handler: DefaultDojoStructHandler::new(DefaultDojoTypeHandler),
+            enum_handler: DefaultDojoEnumHandler::new(DefaultDojoTypeHandler),
         }
     }
 
@@ -55,16 +58,30 @@ impl GodotPlugin {
         }
     }
 
+    fn handle_enum(&self, token: &Token) -> TokenStream {
+        match token {
+            Token::Composite(c) => {
+                self.enum_handler.get(c)
+            },
+            _ => panic!("Not a composite, cannot create an enum!")
+        }
+    }
+
     fn handle_model(&self, name: &str, model: &DojoModel) -> TokenStream {
         let imports = self.get_imports();
 
         let structs = model.tokens.structs.iter()
             .map(|e| self.handle_struct(e));
 
+        let enums = model.tokens.enums.iter()
+            .map(|e| self.handle_enum(e));
+
         quote! {
             #imports
 
             #(#structs)*
+
+            #(#enums)*
         }
     }
 

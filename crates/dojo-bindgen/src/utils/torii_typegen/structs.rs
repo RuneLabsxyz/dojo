@@ -1,26 +1,13 @@
 use cainome::parser::tokens::{Composite, CompositeInner, Token};
 use proc_macro2::{Ident, Span, TokenStream};
-use quote::quote;
+use quote::{format_ident, quote};
 use syn::{Token, Type};
+use crate::utils::torii_typegen::{get_ident, get_safe_ident};
+use crate::utils::torii_typegen::shared::BaseDojoHandler;
 use crate::utils::torii_typegen::types::TypeHandler;
 
 // We use a trait to make it relatively easy to override the components
-pub trait DojoStructHandler {
-    fn get_type_handler<'a>(&'a self) -> &'a dyn TypeHandler;
-
-    fn get_derive_types(&self, component: &Token) -> Vec<&'static str> {
-        vec!["Debug", "Clone"]
-    }
-
-    fn get_attributes(&self, component: &Token) -> TokenStream {
-        let derives = self.get_derive_types(component);
-
-        if !derives.is_empty() {
-            quote!(#[derive( #(#derives),* )])
-        } else {
-            quote!()
-        }
-    }
+pub trait DojoStructHandler: BaseDojoHandler {
 
     // This function must not provide the commas. This will be handled by the struct generator
     fn get_field(&self, field: &CompositeInner, owner: &Composite) -> TokenStream {
@@ -35,17 +22,6 @@ pub trait DojoStructHandler {
     /// For a given composite, it always gives out the same value.
     fn get_name(&self, composite: &Composite) -> Ident {
         get_safe_ident(&*composite.type_name_or_alias())
-    }
-
-    fn get_generics(&self, composite: &Composite) -> Option<TokenStream> {
-        if composite.is_generic() {
-            let generics = composite.generic_args.iter()
-                .map(|(name, _)| get_safe_ident(name));
-
-            Some(quote!(#(#generics),*))
-        } else {
-            None
-        }
     }
 
     fn get_declaration(&self, composite: &Composite) -> TokenStream {
@@ -124,25 +100,6 @@ pub trait DojoStructHandler {
     }
 }
 
-static RESERVED_KEYWORDS: [&'static str; 3] = [
-    "type",
-    "move",
-    "final"
-];
-
-/// Utility function that allows to create a safe ident. In the case where the identifier is a reserved keyword,
-/// this function call will return a raw ident (prefixed with r#) to work around the rust limitation.
-pub fn get_safe_ident(ident_str: &str) -> Ident {
-    if RESERVED_KEYWORDS.contains(&ident_str) {
-        Ident::new_raw(ident_str, Span::call_site())
-    } else {
-        Ident::new(ident_str, Span::call_site())
-    }
-}
-
-fn get_ident(name: &str) -> Ident {
-    Ident::new(name, Span::call_site())
-}
 
 
 #[derive(Debug)]
@@ -154,8 +111,10 @@ impl<T: TypeHandler> DefaultDojoStructHandler<T> {
     }
 }
 
-impl <T: TypeHandler> DojoStructHandler for DefaultDojoStructHandler<T> {
+impl <T: TypeHandler> BaseDojoHandler for DefaultDojoStructHandler<T> {
     fn get_type_handler<'a>(&'a self) -> &'a dyn TypeHandler {
         &self.0
     }
 }
+
+impl <T: TypeHandler> DojoStructHandler for DefaultDojoStructHandler<T> {}
