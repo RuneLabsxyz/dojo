@@ -23,7 +23,6 @@ katana-node.workspace = true
 katana-primitives = { path = "../katana/primitives" }
 katana-rpc = { path = "../katana/rpc/rpc" }
 katana-rpc-api = { path = "../katana/rpc/rpc-api" }
-katana-starknet = { package = "starknet", version = "=0.10.0" }
 scarb.workspace = true
 scarb-ui.workspace = true
 serde.workspace = true

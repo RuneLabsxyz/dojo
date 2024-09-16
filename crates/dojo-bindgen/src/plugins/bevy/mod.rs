@@ -8,7 +8,7 @@ use proc_macro2::TokenStream as TokenStream2;
 use std::collections::HashMap;
 use std::ops::Index;
 use std::path::{Path, PathBuf};
-
+use quote::{format_ident, quote};
 use crate::error::BindgenResult;
 use crate::plugins::BuiltinPlugin;
 use crate::{DojoContract, DojoData, DojoModel};

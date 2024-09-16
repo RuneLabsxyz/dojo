@@ -37,6 +37,7 @@ members = [
 	"crates/sozo/signers",
 	"crates/sozo/walnut",
 	"crates/torii/client",
+	"crates/torii/convert",
 	"crates/torii/server",
 	"crates/torii/types-test",
 	"examples/spawn-and-move",
@@ -175,7 +176,7 @@ quote = "1.0.36"
 rand = "0.8.5"
 rayon = "1.8.0"
 regex = "1.10.3"
-reqwest = { version = "0.12", features = [ "blocking", "json", "rustls-tls" ], default-features = false }
+reqwest = { version = "^0.12.7", features = [ "blocking", "json", "rustls-tls" ], default-features = false }
 rpassword = "7.2.0"
 rstest = "0.18.2"
 rstest_reuse = "0.6.0"

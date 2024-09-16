@@ -10,6 +10,8 @@ use dojo_world::manifest::BaseManifest;
 pub mod error;
 use error::BindgenResult;
 
+pub(crate) mod utils;
+
 mod plugins;
 use plugins::bevy::BevyPlugin;
 use plugins::typescript::TypescriptPlugin;

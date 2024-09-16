@@ -107,7 +107,7 @@ impl Client {
     }
 
     /// Retrieve raw starknet events matching the keys provided.
-    /// If the keys are empty, it will return all events.
+    /// If the keys are empty, it will return a         ll events.
     pub async fn starknet_events(&self, query: EventQuery) -> Result<Vec<Event>, Error> {
         let mut grpc_client = self.inner.write().await;
         let RetrieveEventsResponse { events } = grpc_client.retrieve_events(query).await?;
@@ -119,7 +119,7 @@ impl Client {
         &self,
         clauses: Vec<EntityKeysClause>,
     ) -> Result<EntityUpdateStreaming, Error> {
-        let mut grpc_client = self.inner.write().await;
+        let mut grpc_client  = self.inner.write().await;
         let stream = grpc_client.subscribe_entities(clauses).await?;
         Ok(stream)
     }

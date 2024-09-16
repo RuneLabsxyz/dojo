@@ -11,3 +11,4 @@ starknet = "2.7.0"
 [[target.starknet-contract]]
 sierra = true
 
+[lib]

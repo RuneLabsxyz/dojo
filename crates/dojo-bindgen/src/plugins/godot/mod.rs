@@ -7,17 +7,25 @@ use chrono::{DateTime, Utc};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 use std::collections::HashMap;
+use std::hash::DefaultHasher;
 use std::path::{Path, PathBuf};
+use cainome::parser::tokens::Token;
 use syn::File;
+use crate::utils::torii_typegen::structs::{DefaultDojoStructHandler, DojoStructHandler};
+use crate::utils::torii_typegen::types::DefaultDojoTypeHandler;
 
 #[derive(Debug)]
 pub struct GodotPlugin {
     generated_time: DateTime<Utc>,
+    struct_handler: DefaultDojoStructHandler<DefaultDojoTypeHandler>,
 }
 
 impl GodotPlugin {
     pub fn new() -> Self {
-        Self { generated_time: Utc::now() }
+        Self {
+            generated_time: Utc::now(),
+            struct_handler: DefaultDojoStructHandler::new(DefaultDojoTypeHandler)
+        }
     }
 
     fn get_header(&self) -> String {
@@ -37,17 +45,26 @@ impl GodotPlugin {
         }
     }
 
+    fn handle_struct(&self, token: &Token) -> TokenStream {
+        // TODO: At some point, we need to have a way to combine the same declarations.
+        match token {
+            Token::Composite(c) => {
+                self.struct_handler.get(c)
+            },
+            _ => panic!("Not a composite, cannot create a struct!")
+        }
+    }
+
     fn handle_model(&self, name: &str, model: &DojoModel) -> TokenStream {
         let imports = self.get_imports();
 
-        let name = name.split('-').last().unwrap().to_lowercase();
-
-        let contents = cainome::rs::abi_to_tokenstream(&*name, &model.tokens, ExecutionVersion::V1, &[]);
+        let structs = model.tokens.structs.iter()
+            .map(|e| self.handle_struct(e));
 
         quote! {
             #imports
 
-            #contents
+            #(#structs)*
         }
     }
 
@@ -55,10 +72,7 @@ impl GodotPlugin {
         // TODO: This is not optimized, at all. We clone & resize vectors, but welp
         // TODO: Remove the unwrap
 
-        let value: File = syn::parse2(stream).unwrap();
-        let parsed_contents = prettyplease::unparse(&value);
-
-        format!("{}{}", self.get_header(), parsed_contents).into_bytes()
+        crate::utils::write_file(&*self.get_header(), stream)
     }
 }
 
@@ -68,6 +82,8 @@ impl BuiltinPlugin for GodotPlugin {
         let mut imports = vec![];
 
         let mut files: HashMap<PathBuf, Vec<u8>> = HashMap::new();
+
+        // Before everything, do a pass for every struct that is declared multiple times.
 
         for (name, model) in &data.models {
             let name = name.split('-').last().unwrap().to_lowercase();
