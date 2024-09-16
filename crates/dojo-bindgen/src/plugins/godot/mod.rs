@@ -118,8 +118,6 @@ impl BuiltinPlugin for GodotPlugin {
             #( pub mod #imports; )*
         };
 
-        println!("Finishing!!! {}", lib_contents);
-
         files.insert(Path::new("lib.rs").to_owned(), self.get_file(lib_contents));
 
         // TODO: Contracts?

@@ -45,8 +45,8 @@ pub trait DojoStructHandler: BaseDojoHandler {
     }
 
     fn get_from_impl(&self, composite: &Composite) -> TokenStream {
-        let dojo_entity = get_ident("torii_grpc::types::schema::Entity");
-        let name = self.get(composite);
+        let dojo_entity = quote!(torii_grpc::types::schema::Entity);
+        let name = self.get_name(composite);
 
         // Generics adds a lot of difficulty to something that could be simple.
         // Fortunately, quote supports optionals, and will not output anything if the variant is
@@ -62,19 +62,16 @@ pub trait DojoStructHandler: BaseDojoHandler {
                     todo!()
                 }
             }
-
-            impl FromTorii #generics for #name #generics {
-            }
         }
     }
 
     fn get_implementation(&self, composite: &Composite) -> TokenStream {
         let name = self.get_name(composite);
 
-        quote! {
-            impl #name {
+        let from_impl = self.get_from_impl(composite);
 
-            }
+        quote! {
+            #from_impl
         }
     }
 
