@@ -37,6 +37,7 @@ members = [
 	"crates/sozo/signers",
 	"crates/sozo/walnut",
 	"crates/torii/client",
+	"crates/torii/client-channel",
 	"crates/torii/convert",
 	"crates/torii/server",
 	"crates/torii/types-test",

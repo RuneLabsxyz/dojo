@@ -3360,6 +3360,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4b82cf0babdbd58558212896d1a4272303a57bdb245c2bf1147185fb45640e70"
 
 [[package]]
+name = "client-channel"
+version = "1.0.0-alpha.11"
+dependencies = [
+ "async-channel 2.3.1",
+ "dojo-types",
+ "futures-util",
+ "log",
+ "serde",
+ "starknet",
+ "starknet-types-core",
+ "thiserror",
+ "tokio",
+ "torii-client",
+ "torii-grpc",
+ "wasm-bindgen-futures",
+]
+
+[[package]]
 name = "clru"
 version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -15365,9 +15383,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-futures"
-version = "0.4.42"
+version = "0.4.43"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "76bc14366121efc8dbb487ab05bcc9d346b3b5ec0eaa76e46594cabbe51762c0"
+checksum = "61e9300f63a621e96ed275155c108eb6f843b6a26d053f122ab69724559dc8ed"
 dependencies = [
  "cfg-if",
  "js-sys",

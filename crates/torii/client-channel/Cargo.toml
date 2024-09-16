@@ -4,3 +4,17 @@ edition.workspace = true
 version.workspace = true
 
 [dependencies]
+serde.workspace = true
+starknet.workspace = true
+starknet-types-core.workspace = true
+
+tokio.workspace = true
+torii-client = { path = "../client" }
+torii-grpc = { path = "../grpc" }
+dojo-types = { path = "../../dojo-types" }
+
+thiserror.workspace = true
+async-channel = "2.3.1"
+log = "0.4.22"
+wasm-bindgen-futures = "0.4.43"
+futures-util = "0.3.30"
