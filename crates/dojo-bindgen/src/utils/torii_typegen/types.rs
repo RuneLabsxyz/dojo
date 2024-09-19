@@ -1,14 +1,12 @@
+use crate::utils::torii_typegen;
 /// In this file, the type handler will be implemented.
-
 use cainome::parser::tokens::{Array, Composite, Token, Tuple};
 use proc_macro2::{Ident, Span};
 use quote::ToTokens;
 use syn::{parse_quote, GenericArgument, Type};
-use crate::utils::torii_typegen;
 
 fn type_from_str(ty: &str) -> Type {
-    syn::parse_str(ty)
-        .unwrap_or_else(|_| panic!("Unable to convert {ty} to a syn::Type"))
+    syn::parse_str(ty).unwrap_or_else(|_| panic!("Unable to convert {ty} to a syn::Type"))
 }
 
 macro_rules! ty {
@@ -31,12 +29,13 @@ pub trait TypeHandler {
             Token::Tuple(tuple) => self.get_tuple(tuple),
             Token::Composite(composite) => self.get_composite(composite),
             Token::GenericArg(arg) => self.get_generic_arg(arg),
-            t => panic!("Unsupported type {t:#?}!")
+            t => panic!("Unsupported type {t:#?}!"),
         }
     }
 
     fn get_basic_type(&self, type_name: &str) -> Type {
         let ccsp = self.get_cairo_serde_path();
+        let type_name = type_name.split("::").last().unwrap_or(type_name);
 
         match type_name {
             "ClassHash" => ty!("{ccsp}::ContractAddress"),
@@ -75,16 +74,12 @@ pub trait TypeHandler {
     }
 
     fn get_tuple(&self, tuple: &Tuple) -> Type {
-        let mapped_component: Vec<Type> = tuple.inners.iter()
-            .map(|e| self.get_type(e))
-            .collect();
+        let mapped_component: Vec<Type> = tuple.inners.iter().map(|e| self.get_type(e)).collect();
 
-        parse_quote!{
+        parse_quote! {
             (#(#mapped_component),*)
         }
     }
-
-
 
     fn get_composite(&self, composite: &Composite) -> Type {
         let base_type;
@@ -97,9 +92,8 @@ pub trait TypeHandler {
         // Add genericity to the mix
 
         if composite.is_generic() {
-            let parameters: Vec<Type> = composite.generic_args.iter()
-                .map(|(_, ty)| self.get_type(ty))
-                .collect();
+            let parameters: Vec<Type> =
+                composite.generic_args.iter().map(|(_, ty)| self.get_type(ty)).collect();
 
             parse_quote!(#base_type<#(#parameters),*>)
         } else {
