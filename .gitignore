@@ -9,6 +9,10 @@ dojo.iml
 .env
 data
 **/katana-logs
+.direnv
+.envrc
+/result*/
+/result
 
 crates/benches/gas_usage.txt
 output.txt
