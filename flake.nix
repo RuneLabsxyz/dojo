@@ -1,259 +1,270 @@
-    {
-      description = "Rust development template";
+{
+  description = "Rust development template";
 
-      inputs = {
-        nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
-        utils.url = "github:numtide/flake-utils";
-        rust-overlay = {
-          url = "github:oxalica/rust-overlay";
-          inputs.nixpkgs.follows = "nixpkgs";
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    utils.url = "github:numtide/flake-utils";
+    rust-overlay = {
+      url = "github:oxalica/rust-overlay";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    crane = {
+      url = "github:ipetkov/crane";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+  };
+
+  outputs = {
+    self,
+    nixpkgs,
+    utils,
+    rust-overlay,
+    crane,
+    ...
+  }:
+    utils.lib.eachDefaultSystem
+    (
+      system: let
+        pkgs = import nixpkgs {
+          inherit system;
+          overlays = [
+            rust-overlay.overlays.default
+          ];
         };
-        crane = {
-          url = "github:ipetkov/crane";
-          inputs.nixpkgs.follows = "nixpkgs";
+
+        inherit (pkgs) lib;
+
+        craneLib = crane.mkLib pkgs;
+        # include proto & compiled json
+        protoFilter = path: _type: builtins.match ".*proto$" path != null;
+        jsonFilter = path: _type: builtins.match ".*json$" path != null;
+        sourceFilter = path: type:
+          (protoFilter path type) || (jsonFilter path type) || (craneLib.filterCargoSources path type);
+
+        src = lib.cleanSourceWith {
+          src = ./.;
+          filter = sourceFilter;
+          name = "source"; # Be reproducible, regardless of the directory name
         };
-      };
 
-      outputs =
-        { self
-        , nixpkgs
-        , utils
-        , rust-overlay
-        , crane
-        , ...
-        }:
-        utils.lib.eachDefaultSystem
-          (
-            system:
-            let
-              pkgs = import nixpkgs {
-                inherit system;
-                overlays = [
-                  rust-overlay.overlays.default
-                ];
-              };
+        loadedChain = pkgs.rust-bin.stable."1.81.0".default.override {
+          extensions = ["rust-src"];
+        };
 
-              inherit (pkgs) lib;
+        cairo-zip = pkgs.fetchurl {
+          url = "https://github.com/starkware-libs/cairo/archive/refs/tags/v2.7.0.zip";
+          hash = "sha256-jjLEHBXsfCu2CSoXvpev0HMzHxoc2rYE9PsVonPVuTI=";
+        };
 
-              craneLib = crane.mkLib pkgs;
-              # include proto & compiled json
-              protoFilter = path: _type: builtins.match ".*proto$" path != null;
-              jsonFilter = path: _type: builtins.match ".*json$" path != null;
-              sourceFilter = path: type:
-                (protoFilter path type) || (jsonFilter path type) || (craneLib.filterCargoSources path type);
+        commonArgs = {
+          inherit src;
 
+          pname = "dojo";
+          strictDeps = true;
+          doCheck = false;
 
-              src = lib.cleanSourceWith {
-                src = ./.;
-                filter = sourceFilter;
-                name = "source"; # Be reproducible, regardless of the directory name
-              };
+          buildInputs = with pkgs;
+            [
+              curl
+              openssl
+              libclang
+              libclang.lib
 
-              loadedChain = pkgs.rust-bin.stable."1.80.0".default.override {
-                extensions = [ "rust-src" ];
-              };
+              protobuf
+            ]
+            ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
+              # Additional darwin specific inputs can be set here
+              pkgs.libiconv
+            ];
 
-              craneLibLLvmTools =
-                craneLib.overrideToolchain
-                  loadedChain;
+          nativeBuildInputs = with pkgs; [
+            rustPlatform.bindgenHook
+            pkg-config
+          ];
 
-              cairo-zip = pkgs.fetchurl {
-                url = "https://github.com/starkware-libs/cairo/archive/refs/tags/v2.7.0.zip";
-                hash = "sha256-jjLEHBXsfCu2CSoXvpev0HMzHxoc2rYE9PsVonPVuTI=";
-              };
+          LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
+          CAIRO_ARCHIVE = "${cairo-zip}";
+          PROTOC = "${pkgs.protobuf}/bin/protoc";
+        };
 
-              commonArgs = {
-                inherit src;
+        # Override for scarb-metadata (pin versions for now)
+        isScarb = p:
+          lib.hasPrefix
+          "git+https://github.com/software-mansion/scarb"
+          p.source;
 
-                pname = "dojo";
-                strictDeps = true;
-                doCheck = false;
+        cargoVendorDir = craneLib.vendorCargoDeps (commonArgs
+          // {
+            # Use this function to override crates coming from git dependencies
+            overrideVendorGitCheckout = ps: drv:
+            # For example, patch a specific repository and tag, in this case num_cpus-1.13.1
+              if lib.any (p: (isScarb p)) ps
+              then
+                drv.overrideAttrs
+                (
+                  _old: let
+                    pss = lib.findFirst (p: (p.name == "scarb-build-metadata")) null ps;
+                    scarb = lib.findFirst (p: (p.name == "scarb")) null ps;
+                  in {
+                    patches = [
+                      (pkgs.substituteAll {
+                        src = ./.nix-hack/scarb-metadata.patch;
+                        cairoZip = "${cairo-zip}";
+                      })
+                    ];
 
-                buildInputs = with pkgs;
-                  [
-                    curl
-                    openssl
-                    libclang
-                    libclang.lib
+                    # Similarly we can also run additional hooks to make changes
+                    postInstall = builtins.trace pss ''
+                      echo "=========="
+                      echo "-> " $CAIRO_ARCHIVE
+                      SCARB_META_OUT_DIR=${pss.name}-${pss.version}
+                      cp $src/Cargo.lock $out/$SCARB_META_OUT_DIR/Cargo.lock
+                      echo --- Fix values
+                      CAIRO_VERSION=$(${pkgs.toml-cli}/bin/toml get Cargo.lock . | jq '.package[] | select(.name == "cairo-lang-compiler").version' -r)
+                      sed -i -e "s/{{cairo_version}}/$CAIRO_VERSION/g" $out/$SCARB_META_OUT_DIR/build.rs
+                      sed -i -e "s/{{version}}/${scarb.version}/g" $out/$SCARB_META_OUT_DIR/build.rs
+                      echo "=========="
+                      cat $out/$SCARB_META_OUT_DIR/build.rs
+                    '';
+                  }
+                )
+              else
+                # Nothing to change, leave the derivations as is
+                drv;
+          });
 
-                    protobuf
-                  ]
-                  ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
-                    # Additional darwin specific inputs can be set here
-                    pkgs.libiconv
-                  ];
+        cargoArtifactsValue =
+          commonArgs
+          // {
+            cargoVendorDir = builtins.toString cargoVendorDir;
+          };
 
-                nativeBuildInputs = with pkgs; [
-                  rustPlatform.bindgenHook
-                  pkg-config
-                ];
+        cargoArtifacts = craneLib.buildDepsOnly cargoArtifactsValue;
 
-                LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
-                CAIRO_ARCHIVE = "${cairo-zip}";
-                PROTOC = "${pkgs.protobuf}/bin/protoc";
-              };
+        individualCrateArgs =
+          commonArgs
+          // {
+            inherit cargoArtifacts cargoVendorDir;
+            inherit (craneLib.crateNameFromCargoToml {inherit src;}) version;
+            # NB: we disable tests since we'll run them all via cargo-nextest
+            doCheck = false;
+          };
 
+        crates = builtins.map (x: ./. + "/crates/${x}") (builtins.attrNames (builtins.readDir ./crates));
+        fileSetForCrate = crate:
+          pkgs.lib.fileset.toSource {
+            root = ./.;
+            fileset = lib.fileset.unions ([
+                ./Cargo.toml
+                ./Cargo.lock
+                crate
 
-              # Override for scarb-metadata (pin versions for now)
-              isScarb = p: lib.hasPrefix
-                "git+https://github.com/software-mansion/scarb"
-                p.source;
+                ./examples/spawn-and-move
+                ./xtask/generate-test-db
+              ]
+              ++ crates);
+          };
 
-              cargoVendorDir = craneLib.vendorCargoDeps (commonArgs // {
-                # Use this function to override crates coming from git dependencies
-                overrideVendorGitCheckout = ps: drv:
-                  # For example, patch a specific repository and tag, in this case num_cpus-1.13.1
-                  if lib.any (p: (isScarb p)) ps then
-                    drv.overrideAttrs
-                      (_old:
-                        let
-                          pss = lib.findFirst (p: (p.name == "scarb-build-metadata")) null ps;
-                          scarb = lib.findFirst (p: (p.name == "scarb")) null ps;
-                        in
-                        {
+        # Build the top-level crates of the workspace as individual derivations.
+        # This allows consumers to only depend on (and build) only what they need.
+        # Though it is possible to build the entire workspace as a single derivation,
+        # so this is left up to you on how to organize things
+        dojo-language-server = builtins.trace "${fileSetForCrate ./bin/dojo-language-server}" (craneLib.buildPackage (individualCrateArgs
+          // {
+            pname = "dojo-language-server";
+            cargoExtraArgs = "-p dojo-language-server";
+            src = fileSetForCrate ./bin/dojo-language-server;
+          }));
 
-                          patches = [
-                            (pkgs.substituteAll {
-                              src = ./.nix-hack/scarb-metadata.patch;
-                              cairoZip = "${cairo-zip}";
-                            })
-                          ];
+        katana =
+          craneLib.buildPackage individualCrateArgs
+          // {
+            pname = "katana";
+            cargoExtraArgs = "-p katana";
+            src = fileSetForCrate ./bin/katana;
+          };
 
-                          # Similarly we can also run additional hooks to make changes
-                          postInstall = builtins.trace pss ''
-                            echo "=========="
-                            echo "-> " $CAIRO_ARCHIVE
-                            SCARB_META_OUT_DIR=${pss.name}-${pss.version}
-                            cp $src/Cargo.lock $out/$SCARB_META_OUT_DIR/Cargo.lock
-                            echo --- Fix values
-                            CAIRO_VERSION=$(${pkgs.toml-cli}/bin/toml get Cargo.lock . | jq '.package[] | select(.name == "cairo-lang-compiler").version' -r)
-                            sed -i -e "s/{{cairo_version}}/$CAIRO_VERSION/g" $out/$SCARB_META_OUT_DIR/build.rs
-                            sed -i -e "s/{{version}}/${scarb.version}/g" $out/$SCARB_META_OUT_DIR/build.rs
-                            echo "=========="
-                            cat $out/$SCARB_META_OUT_DIR/build.rs
-                          '';
-                        }
-                      )
-                  else
-                  # Nothing to change, leave the derivations as is
-                    drv;
-              });
+        saya =
+          craneLib.buildPackage individualCrateArgs
+          // {
+            pname = "saya";
+            cargoExtraArgs = "-p saya";
+            src = fileSetForCrate ./bin/saya;
+          };
 
-              cargoArtifactsValue = commonArgs // {
-                cargoVendorDir = builtins.toString cargoVendorDir;
-              };
+        scheduler =
+          craneLib.buildPackage individualCrateArgs
+          // {
+            pname = "scheduler";
+            cargoExtraArgs = "-p scheduler";
+            src = fileSetForCrate ./bin/scheduler;
+          };
 
-              cargoArtifacts = craneLib.buildDepsOnly cargoArtifactsValue;
+        sozo =
+          craneLib.buildPackage individualCrateArgs
+          // {
+            pname = "sozo";
+            cargoExtraArgs = "-p sozo";
+            src = fileSetForCrate ./bin/sozo;
+          };
 
-              individualCrateArgs =
-                commonArgs
-                // {
-                  inherit cargoArtifacts cargoVendorDir;
-                  inherit (craneLib.crateNameFromCargoToml { inherit src; }) version;
-                  # NB: we disable tests since we'll run them all via cargo-nextest
-                  doCheck = false;
-                };
+        torii =
+          craneLib.buildPackage individualCrateArgs
+          // {
+            pname = "torii";
+            cargoExtraArgs = "-p torii";
+            src = fileSetForCrate ./bin/torii;
+          };
 
-              crates = builtins.map (x: ./. + "/crates/${x}") (builtins.attrNames (builtins.readDir ./crates));
-              fileSetForCrate = crate:
-                pkgs.lib.fileset.toSource {
-                  root = ./.;
-                  fileset = lib.fileset.unions ([
-                    ./Cargo.toml
-                    ./Cargo.lock
-                    crate
+        nightlyChain = pkgs.rust-bin.nightly."2024-08-28".default.override {
+          extensions = ["rust-src" "rustfmt"];
+        };
 
-                    ./examples/spawn-and-move
-                    ./xtask/generate-test-db
-                  ] ++ crates);
-                };
+        cargoFmtScript = pkgs.writeShellScriptBin "cargo-nightly-fmt" ''
+          VERSION=$(${nightlyChain}/bin/rustfmt --version)
+          echo "Nightly chain: ${nightlyChain}, version $VERSION"
+          # Pritoritize nightly chain
+          shift
+          PATH=${nightlyChain}/bin:$PATH  ${nightlyChain}/bin/cargo fmt $@
+        '';
+      in {
+        packages = {
+          inherit dojo-language-server katana saya scheduler sozo torii;
+        };
 
-              # Build the top-level crates of the workspace as individual derivations.
-              # This allows consumers to only depend on (and build) only what they need.
-              # Though it is possible to build the entire workspace as a single derivation,
-              # so this is left up to you on how to organize things
-              dojo-language-server = builtins.trace "${fileSetForCrate ./bin/dojo-language-server}" (craneLib.buildPackage (individualCrateArgs
-                // {
-                pname = "dojo-language-server";
-                cargoExtraArgs = "-p dojo-language-server";
-                src = fileSetForCrate ./bin/dojo-language-server;
-              }));
+        # Used by `nix develop`
+        devShells.default = pkgs.mkShell {
+          buildInputs = with pkgs; [
+            loadedChain
 
-              katana = craneLib.buildPackage individualCrateArgs
-                // {
-                pname = "katana";
-                cargoExtraArgs = "-p katana";
-                src = fileSetForCrate ./bin/katana;
-              };
+            clippy
+            rustfmt
 
-              saya = craneLib.buildPackage individualCrateArgs
-                // {
-                pname = "saya";
-                cargoExtraArgs = "-p saya";
-                src = fileSetForCrate ./bin/saya;
-              };
+            pkg-config
 
+            openssl
+            libclang
+            libclang.lib
 
-              scheduler = craneLib.buildPackage individualCrateArgs
-                // {
-                pname = "scheduler";
-                cargoExtraArgs = "-p scheduler";
-                src = fileSetForCrate ./bin/scheduler;
-              };
+            protobuf
 
-              sozo = craneLib.buildPackage individualCrateArgs
-                // {
-                pname = "sozo";
-                cargoExtraArgs = "-p sozo";
-                src = fileSetForCrate ./bin/sozo;
-              };
+            cargoFmtScript
+          ];
 
-              torii = craneLib.buildPackage individualCrateArgs
-                // {
-                pname = "torii";
-                cargoExtraArgs = "-p torii";
-                src = fileSetForCrate ./bin/torii;
-              };
+          nativeBuildInputs = with pkgs; [
+            rustPlatform.bindgenHook
+            pkg-config
+          ];
 
+          shellHook = ''
+            mkdir -p .direnv/current/tools
+            ln -sfn ${loadedChain} .direnv/current/tools/rust
+          '';
 
-            in
-            rec
-            {
-              packages = {
-                inherit dojo-language-server katana saya scheduler sozo torii;
-              };
-
-              # Used by `nix develop`
-              devShells.default = pkgs.mkShell {
-                buildInputs = with pkgs; [
-                  loadedChain
-
-                  clippy
-                  rustfmt
-
-                  pkg-config
-
-                  openssl
-                  libclang
-                  libclang.lib
-
-                  protobuf
-                ];
-
-                nativeBuildInputs = with pkgs; [
-                  rustPlatform.bindgenHook
-                  pkg-config
-                ];
-
-                shellHook = ''
-                  mkdir -p .direnv/current/tools
-                  ln -sfn ${loadedChain} .direnv/current/tools/rust
-                '';
-
-                LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
-                CAIRO_ARCHIVE = "${cairo-zip}";
-                PROTOC = "${pkgs.protobuf}/bin/protoc";
-              };
-            }
-          );
-    }
+          LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
+          CAIRO_ARCHIVE = "${cairo-zip}";
+          PROTOC = "${pkgs.protobuf}/bin/protoc";
+        };
+      }
+    );
+}

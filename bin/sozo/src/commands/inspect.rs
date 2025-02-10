@@ -524,7 +524,10 @@ fn generate_manifest(world_diff: &WorldDiff, force: bool) -> Result<()> {
                 "The world is not up to date. Use --force to generate the manifest anyway."
             ));
         } else {
-            eprintln!("Warning: The world is not up to date, but generation is forced. The generated manifest might not represent the remote world.");
+            eprintln!(
+                "Warning: The world is not up to date, but generation is forced. The generated \
+                 manifest might not represent the remote world."
+            );
         }
     }
 
